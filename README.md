@@ -15,5 +15,6 @@ Scripts: `typecheck`, `lint`, `test`, `format`, `db:reset`.
 
 ## Status
 - [x] M1: Next.js scaffold, Prisma schema, seed data
-- [ ] M2 onwards: see CLAUDE.md
+- [x] M2: auth, roles, projects
+- [ ] M3 onwards: see CLAUDE.md
 
