@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// SQLite for local dev. For Neon/Postgres deployment (M7) change provider to "postgresql"
+// and swap the driver adapter in src/lib/db.ts.
+datasource db {
+  provider = "sqlite"
+}
+
+enum GlobalRole {
+  ADMIN
+  USER
+}
+
+enum ProjectRole {
+  PRODUCT_OWNER
+  SCRUM_MASTER
+  DEVELOPER
+}
+
+enum ItemType {
+  EPIC
+  STORY
+  TASK
+  BUG
+}
+
+enum ItemStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SprintStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+}
+
+enum ActionStatus {
+  OPEN
+  DONE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         GlobalRole @default(USER)
+  createdAt    DateTime @default(now())
+
+  memberships  ProjectMember[]
+  assigned     WorkItem[]      @relation("Assignee")
+  reported     WorkItem[]      @relation("Reporter")
+  comments     Comment[]
+  timeLogs     TimeLog[]
+  actionItems  ActionItem[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+
+  members     ProjectMember[]
+  items       WorkItem[]
+  sprints     Sprint[]
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  userId    String
+  role      ProjectRole
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model Sprint {
+  id        String       @id @default(cuid())
+  projectId String
+  name      String
+  goal      String       @default("")
+  status    SprintStatus @default(PLANNED)
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime     @default(now())
+
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items     WorkItem[]
+  snapshots SprintSnapshot[]
+  retro     Retrospective?
+
+  @@index([projectId])
+}
+
+model WorkItem {
+  id          String     @id @default(cuid())
+  projectId   String
+  number      Int
+  type        ItemType
+  title       String
+  description String     @default("")
+  status      ItemStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  storyPoints Int?
+  blocked     Boolean    @default(false)
+  position    Int        @default(0)
+  parentId    String?
+  sprintId    String?
+  assigneeId  String?
+  reporterId  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  completedAt DateTime?
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      WorkItem? @relation("Hierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    WorkItem[] @relation("Hierarchy")
+  sprint      Sprint?   @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  assignee    User?     @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter    User?     @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  comments    Comment[]
+  timeLogs    TimeLog[]
+  history     StatusChange[]
+
+  @@unique([projectId, number])
+  @@index([sprintId])
+  @@index([projectId, status])
+}
+
+model StatusChange {
+  id         String     @id @default(cuid())
+  itemId     String
+  fromStatus ItemStatus?
+  toStatus   ItemStatus
+  changedAt  DateTime   @default(now())
+
+  item       WorkItem   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  itemId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  item      WorkItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model TimeLog {
+  id       String   @id @default(cuid())
+  itemId   String
+  userId   String
+  hours    Float
+  note     String   @default("")
+  loggedAt DateTime @default(now())
+
+  item     WorkItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Daily snapshot of remaining/completed points; powers burndown and cumulative flow.
+model SprintSnapshot {
+  id              String   @id @default(cuid())
+  sprintId        String
+  date            DateTime
+  remainingPoints Int
+  todoCount       Int
+  inProgressCount Int
+  reviewCount     Int
+  doneCount       Int
+
+  sprint          Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, date])
+}
+
+model Retrospective {
+  id         String   @id @default(cuid())
+  sprintId   String   @unique
+  wentWell   String   @default("")
+  toImprove  String   @default("")
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+
+  sprint     Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  actions    ActionItem[]
+}
+
+model ActionItem {
+  id        String       @id @default(cuid())
+  retroId   String
+  text      String
+  ownerId   String?
+  status    ActionStatus @default(OPEN)
+
+  retro     Retrospective @relation(fields: [retroId], references: [id], onDelete: Cascade)
+  owner     User?         @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+}
