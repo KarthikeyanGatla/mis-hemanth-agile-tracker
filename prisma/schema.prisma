@@ -98,6 +98,8 @@ model Sprint {
   name      String
   goal      String       @default("")
   status    SprintStatus @default(PLANNED)
+  committedPoints Int?
+  completedPoints Int?
   startDate DateTime
   endDate   DateTime
   createdAt DateTime     @default(now())

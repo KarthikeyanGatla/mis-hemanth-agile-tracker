@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireProjectAccess } from "@/lib/session";
 import { canManageBacklog, canManageSprints } from "@/lib/permissions";
-import { canStartSprint, validateSprint } from "@/lib/sprint";
+import { canStartSprint, completedPoints, totalPoints, validateSprint } from "@/lib/sprint";
 import type { ItemType, Priority } from "@/generated/prisma/enums";
 import { ItemType as ItemTypes, Priority as Priorities } from "@/generated/prisma/enums";
 
@@ -88,7 +88,11 @@ export async function startSprint(key: string, formData: FormData) {
   if (!sprint) return;
   const active = await db.sprint.count({ where: { projectId: project.id, status: "ACTIVE" } });
   if (canStartSprint(sprint.status, active)) return;
-  await db.sprint.update({ where: { id: sprint.id }, data: { status: "ACTIVE" } });
+  const items = await db.workItem.findMany({ where: { sprintId: sprint.id } });
+  await db.sprint.update({
+    where: { id: sprint.id },
+    data: { status: "ACTIVE", committedPoints: totalPoints(items) },
+  });
   refresh(key);
 }
 
@@ -100,12 +104,16 @@ export async function completeSprint(key: string, formData: FormData) {
     where: { id: str(formData, "sprintId"), projectId: project.id, status: "ACTIVE" },
   });
   if (!sprint) return;
+  const items = await db.workItem.findMany({ where: { sprintId: sprint.id } });
   await db.$transaction([
     db.workItem.updateMany({
       where: { sprintId: sprint.id, status: { not: "DONE" } },
       data: { sprintId: null },
     }),
-    db.sprint.update({ where: { id: sprint.id }, data: { status: "COMPLETED" } }),
+    db.sprint.update({
+      where: { id: sprint.id },
+      data: { status: "COMPLETED", completedPoints: completedPoints(items) },
+    }),
   ]);
   refresh(key);
 }
