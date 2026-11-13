@@ -26,3 +26,20 @@ describe("sprint rules", () => {
     expect(completedPoints(items)).toBe(5);
   });
 });
+
+import { sprintHealth } from "@/lib/sprint";
+
+describe("sprintHealth", () => {
+  const start = d("2026-03-01");
+  const end = d("2026-03-11");
+  const mid = d("2026-03-06");
+  it("is on track when done matches the plan", () => {
+    expect(sprintHealth(5, 10, start, end, mid)).toBe("ON_TRACK");
+    expect(sprintHealth(9, 10, start, end, mid)).toBe("ON_TRACK");
+  });
+  it("flags at risk and behind", () => {
+    expect(sprintHealth(3, 10, start, end, mid)).toBe("AT_RISK");
+    expect(sprintHealth(1, 10, start, end, mid)).toBe("BEHIND");
+  });
+  it("handles empty sprints", () => expect(sprintHealth(0, 0, start, end, mid)).toBe("NO_DATA"));
+});

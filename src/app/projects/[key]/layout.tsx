@@ -16,6 +16,7 @@ export default async function ProjectLayout({
         <Link href={`${base}/backlog`}>Backlog &amp; Sprints</Link>
         <Link href={`${base}/board`}>Board</Link>
         <Link href={`${base}/reports`}>Reports</Link>
+        <Link href={`${base}/retro`}>Retro</Link>
       </nav>
       {children}
     </>
