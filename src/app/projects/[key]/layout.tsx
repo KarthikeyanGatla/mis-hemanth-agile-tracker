@@ -14,6 +14,7 @@ export default async function ProjectLayout({
       <nav className="mb-6 flex gap-4 border-b border-current/15 pb-2 text-sm">
         <Link href={base}>Overview</Link>
         <Link href={`${base}/backlog`}>Backlog &amp; Sprints</Link>
+        <Link href={`${base}/board`}>Board</Link>
       </nav>
       {children}
     </>
