@@ -44,7 +44,7 @@ function Card({ card, projectKey }: { card: BoardCard; projectKey: string }) {
     >
       <Link
         href={`/projects/${projectKey}/items/${card.number}`}
-        onPointerDown={(e) => e.stopPropagation()}
+        draggable={false}
         className="font-medium hover:underline"
       >
         {card.title}

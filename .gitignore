@@ -17,3 +17,6 @@ coverage/
 src/generated/
 prisma/*.db*
 *.tsbuildinfo
+e2e.db*
+playwright-report/
+test-results/
